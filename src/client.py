@@ -2,11 +2,18 @@ import cv2
 import socket
 import pickle
 import struct
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 640)
+cap.set(cv2.CAP_PROP_FPS, 60)
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('localhost', 8089))
+sock.connect((os.environ.get("HOST_ADDRESS"), os.environ.get("HOST_PORT")))
 
 
 try:
