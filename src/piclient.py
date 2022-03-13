@@ -42,7 +42,7 @@ try:
         # Then data
         sock.sendall(message_size + data)
         
-        key = cv2.waitKey(1) & 0xFF
+        #key = cv2.waitKey(1) & 0xFF
         rawCapture.truncate(0)
         
         sock.setblocking(False)
