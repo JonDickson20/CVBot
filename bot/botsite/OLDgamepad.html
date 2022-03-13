@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+
+  
+
+  <script type="text/javascript" src="gamepad.js"></script>
+  <script async src="http://192.168.68.172/cv.js"></script>
+  <script src='http://192.168.68.172/face-detection.js'></script>
+  <script src='http://192.168.68.172/signalling.js'></script>
+  <script src='http://192.168.68.172/main.js'></script>
+  <script  type='text/javascript'>
+            var Module = {
+                preRun: [],
+                postRun: [],
+                print: (function () {
+                    return function (text) {
+                        text = Array.prototype.slice.call(arguments).join(' ');
+                        console.log(text);
+                    };
+                })(),
+                printErr: function (text) {
+                    text = Array.prototype.slice.call(arguments).join(' ');
+                    console.error(text);
+                }
+            };
+        </script>
+  <style>
+  h1{
+    margin: auto;
+    width: 50%;
+  }
+  .axes {
+    margin: auto;
+    width: 50%;
+    padding: 1em;
+  }
+
+  .buttons {
+    margin: auto;
+    width: 50%;
+  }
+
+  /*meter*/.axis {
+    min-width: 200px;
+    margin: 1em;
+  }
+
+  .button {
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+    padding: 1em;
+    border-radius: 20px;
+    border: 1px solid black;
+    background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAAxJREFUCNdjYPjPAAACAgEAqiqeJwAAAABJRU5ErkJggg==);
+    background-size: 0% 0%;
+    background-position: 50% 50%;
+    background-repeat: no-repeat;
+  }
+
+  .pressed {
+    border: 1px solid red;
+  }
+
+  .touched::after {
+    content: "touch";
+    display: block;
+    position: absolute;
+    margin-top: -0.2em;
+    margin-left: -0.5em;
+    font-size: 0.8em;
+    opacity: 0.7;
+  }
+  </style>
+</head>
+<body>
+  <div id="container" align="center">
+
+
+  <input required type="text" id="address" value="192.168.68.172:80/webrtc" title="hostname (or IP address) and port of the UV4L WebRTC Web Service"/></label>
+  <div>
+      <button id='start' title="If you do not see any video stream, make sure your browser supports the codec used within this demo (see the source code for details, or try Firefox or Chrome)">Start Streaming</button>
+      <button id='stop'>Stop Streaming</button>
+  </div>
+  <video id='v'></video>
+  <canvas id='c'></canvas>
+  <button id='effect'>Toggle Face Detection</button>
+  <script>
+      // Let's get a default address for the signalling server
+      var address = document.getElementById('address').value;
+      if (!address || address === '') {
+          var hostname = location.hostname;
+          if (hostname) {
+              address = hostname + ':' + (location.port || (location.protocol === 'https:' ? 443 : 80)) + '/webrtc';
+              document.getElementById('address').value = address;
+          } else {
+              document.getElementById('address').value = "<host>:<port>/webrtc";
+          }
+      }
+  </script>
+
+
+
+
+
+    
+
+    
+    <h2 id="start">Press a button on your controller to start</h2>  
+  </div>  
+  
+</body>
+</html>
