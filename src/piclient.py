@@ -5,39 +5,31 @@ import struct
 import os
 import time
 from dotenv import load_dotenv
-
-#only for Pi
 from picamera.array import PiRGBArray
 from picamera import PiCamera
-camera = PiCamera()
-camera.resolution = (640,640)
-camera.framerate = 32
-rawCapture = PiRGBArray(camera, size=(640,640))
-time.sleep(0.1)
 
 load_dotenv()
 
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 640)
-cap.set(cv2.CAP_PROP_FPS, 60)
-
-print(os.environ.get("HOST_PORT"))
+H = 640
+W = 480
+camera = PiCamera()
+camera.resolution = (H,W)
+camera.framerate = 32
+rawCapture = PiRGBArray(camera, size=(H,W))
+time.sleep(0.1)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((os.environ.get("HOST_ADDRESS"), int(os.environ.get("HOST_PORT"))))
 
-
 try:
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
         img = frame.array      
-        sock.setblocking(True)
-        #ret,frame=cap.read()
-        # Serialize frame
+        sock.setblocking(True)       
+        encoded, img = cv2.imencode('.jpg', img)
         data = pickle.dumps(img)
-
+    
         # Send message length first
-        message_size = struct.pack("L", len(data)) ### CHANGED
+        message_size = struct.pack("L", len(data)) ### CHANGED        
 
         # Then data
         sock.sendall(message_size + data)
@@ -48,7 +40,7 @@ try:
         sock.setblocking(False)
         try:
             response = sock.recv(4096)
-            print(response)
+            #print(response)
         except socket.error as e:
             pass
 
