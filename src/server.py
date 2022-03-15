@@ -22,14 +22,14 @@ NMS_THRESHOLD = 0.05
 CONFIDENCE_THRESHOLD = 0.05
 
 def build_model():
-    net = cv2.dnn.readNet("../config_files/bestRac0305.onnx")
+    net = cv2.dnn.readNet("../config_files/yolov5n.onnx")
     net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
     return net
 
 def load_classes():
     class_list = []
-    with open("../config_files/RacClasses.txt", "r") as f:
+    with open("../config_files/classes.txt", "r") as f:
         class_list = [cname.strip() for cname in f.readlines()]
     print(class_list)
     return class_list
@@ -75,14 +75,17 @@ def wrap_detection(input_image, output_data):
                 height = int(h * y_factor)
                 box = np.array([left, top, width, height])
                 boxes.append(box)
-
+    confidences = np.array(confidences)          
+    
     indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.25, 0.45)
 
     result_class_ids = []
     result_confidences = []
     result_boxes = []
-
+    
     for i in indexes:
+        i=i[0]
+        
         result_confidences.append(confidences[i])
         result_class_ids.append(class_ids[i])
         result_boxes.append(boxes[i])
@@ -111,11 +114,12 @@ print('Socket now listening')
 conn, addr = s.accept()
 
 data = b'' ### CHANGED
-payload_size = struct.calcsize("L") ### CHANGED
+payload_size = struct.calcsize("=L") ### CHANGED
 
 
 
 while True:
+    
     frame_count += 1
     total_frames += 1
     # Retrieve message size
@@ -124,19 +128,20 @@ while True:
 
     packed_msg_size = data[:payload_size]
     data = data[payload_size:]
-    msg_size = struct.unpack("L", packed_msg_size)[0] ### CHANGED
-
+    msg_size = struct.unpack("=L", packed_msg_size)[0] ### CHANGED
     # Retrieve all data based on message size
+    
     while len(data) < msg_size:
         data += conn.recv(4096)
 
 
     frame_data = data[:msg_size]
     data = data[msg_size:]
-
+    
     # Extract frame
     frame = pickle.loads(frame_data)
-
+    frame = cv2.imdecode(frame, 1)
+    #print(frame)
     # Display
 
     response = "response"
