@@ -25,29 +25,19 @@ sock.connect((os.environ.get("HOST_ADDRESS"), int(os.environ.get("HOST_PORT"))))
 
 try:
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-        
-        img = frame.array      
         sock.setblocking(True)
-        
+        img = frame.array      
         encoded, img = cv2.imencode('.jpg', img)
         data = pickle.dumps(img)
-        
-        # Send message length first
-        message_size = struct.pack("L", len(data)) ### CHANGED        
-        
-        # Then data
+        message_size = struct.pack("L", len(data))    
         sock.sendall(message_size + data)
-        
-        #key = cv2.waitKey(1) & 0xFF
         rawCapture.truncate(0)
-        
         sock.setblocking(False)
         try:
             response = sock.recv(4096)
             print(response)
         except socket.error as e:
             pass
-
 finally:
         print('closing socket')
         socket.close()

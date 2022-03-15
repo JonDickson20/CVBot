@@ -22,7 +22,7 @@ NMS_THRESHOLD = 0.05
 CONFIDENCE_THRESHOLD = 0.05
 
 def build_model():
-    net = cv2.dnn.readNet("../config_files/yolov5n.onnx")
+    net = cv2.dnn.readNet("../config_files/yolov5s.onnx")
     net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
     return net
@@ -116,10 +116,9 @@ conn, addr = s.accept()
 data = b'' ### CHANGED
 payload_size = struct.calcsize("=L") ### CHANGED
 
-
+    
 
 while True:
-    
     frame_count += 1
     total_frames += 1
     # Retrieve message size
@@ -144,8 +143,6 @@ while True:
     #print(frame)
     # Display
 
-    response = "response"
-    conn.sendall(response.encode())
 
     #FPS
     if frame_count >= 30:
@@ -171,6 +168,28 @@ while True:
         cv2.rectangle(frame, box, color, 2)
         cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
         cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
+        
+        if class_list[classid]=='person':
+            frame_height = frame.shape[0]
+            frame_width = frame.shape[1]
+            center = [int(box[0]+box[2]/2),int(box[1]+box[3]/2)]
+            if center[0] < frame_width/2:
+            	aim_x = "LEFT"
+            else:
+            	aim_x = "RIGHT"
+            
+            if center[1] < frame_height/2:
+            	aim_y = "UP"
+            else:
+            	aim_y = "DOWN"
+            aim = [aim_x, aim_y]
+            
+            cv2.circle(frame,center,5,(0,0,255),3)
+            response = pickle.dumps(aim)
+            conn.sendall(response)
+            
+
+    
 
     cv2.imshow('frame', frame)
     cv2.waitKey(1)
