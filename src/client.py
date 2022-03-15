@@ -18,7 +18,7 @@ def send_capture(sock,img):
     sock.setblocking(True)      
     encoded, img = cv2.imencode('.jpg', img)
     data = pickle.dumps(img)
-    message_size = struct.pack("L", len(data))    
+    message_size = struct.pack("=L", len(data))    
     sock.sendall(message_size + data)    
     sock.setblocking(False)
     try:
