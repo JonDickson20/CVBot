@@ -20,6 +20,7 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.05
 CONFIDENCE_THRESHOLD = 0.05
+AIM_DEADZONE_SIZE = 30
 
 def build_model():
     net = cv2.dnn.readNet("../config_files/yolov5s.onnx")
@@ -173,20 +174,25 @@ while True:
             frame_height = frame.shape[0]
             frame_width = frame.shape[1]
             center = [int(box[0]+box[2]/2),int(box[1]+box[3]/2)]
-            if center[0] < frame_width/2:
+            if center[0] < frame_width/2 - AIM_DEADZONE_SIZE:
             	aim_x = "LEFT"
-            else:
+            elif center[0] > frame_width/2 + AIM_DEADZONE_SIZE:
             	aim_x = "RIGHT"
-            
-            if center[1] < frame_height/2:
-            	aim_y = "UP"
             else:
+            	aim_x = "STOP"
+            
+            if center[1] < frame_height/2 - AIM_DEADZONE_SIZE:
+            	aim_y = "UP"
+            elif center[1] > frame_height/2 + AIM_DEADZONE_SIZE:
             	aim_y = "DOWN"
+            else:
+            	aim_y = "STOP"
             aim = [aim_x, aim_y]
             
             cv2.circle(frame,center,5,(0,0,255),3)
             response = pickle.dumps(aim)
-            conn.sendall(response)
+            if aim[0] != "STOP" or aim[1] != "STOP":
+            	conn.sendall(response)
             
 
     
