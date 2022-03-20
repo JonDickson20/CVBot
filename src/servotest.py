@@ -1,38 +1,59 @@
+import cv2
 import RPi.GPIO as GPIO
+from piservo import Servo
 from time import sleep
+from sshkeyboard import listen_keyboard
 
-x_pin = 14
-y_pin = 21
+x_pin = 19
+y_pin = 18
+
+x = Servo(x_pin)
+y = Servo(y_pin)
+
+x.write(270/2)
+y.write(270/2)
+sleep(1)
+
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(x_pin,GPIO.OUT)
-GPIO.setup(y_pin,GPIO.OUT)
-xp = GPIO.PWM(x_pin, 50)
-yp = GPIO.PWM(y_pin, 50)
-xp.start(0)
-yp.start(0)
-
-def setAngle(pin, angle):   
-    duty = angle / 27 + 2
-    #GPIO.output(pin,True)
-    pin.ChangeDutyCycle(duty)
-    sleep(1)
-    #GPIO.output(pin,False)
-    pin.ChangeDutyCycle(0)
+GPIO.setup(12, GPIO.OUT)
+GPIO.output(12,GPIO.LOW)
+#while True:
+#	GPIO.output(12,GPIO.LOW)
+#	sleep(.1)
+#	GPIO.output(12,GPIO.HIGH)
+#	sleep(.1)
+#quit()
 
 
-setAngle(xp, 0)
-setAngle(yp, 0)
-setAngle(xp, 90)
-setAngle(yp, 90)
-setAngle(xp, 270/2)
-setAngle(yp, 270/2)
-setAngle(xp, 180)
-setAngle(yp, 180)
-setAngle(xp, 270)
-setAngle(yp, 270)
+adjustby = 10
+x_angle = 270/2
+y_angle = 270/2
 
+def press(key):	
+	global x
+	global y
+	global x_angle
+	global y_angle
+	global adjustby
+	print(key)
+	if key == "esc":
+		GPIO.output(12,GPIO.LOW)
+		GPIO.cleanup()
+		quit()
+	if key == "up":	
+		y_angle = y_angle + adjustby
+		y.write(y_angle)
+	if key == "down":
+		y_angle = y_angle - adjustby
+		y.write(y_angle)
+	if key == "right":
+		x_angle = x_angle + adjustby
+		x.write(x_angle)
+	if key == "left":
+		x_angle = x_angle - adjustby
+		x.write(x_angle)
 
-xp.stop()
-yp.stop()
-GPIO.cleanup()
-quit()
+def release(key):
+	print("released "+key)
+
+listen_keyboard(on_press=press, on_release=release)
