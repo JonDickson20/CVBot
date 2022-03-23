@@ -20,16 +20,17 @@ INPUT_HEIGHT = 640
 SCORE_THRESHOLD = 0.2
 NMS_THRESHOLD = 0.05
 CONFIDENCE_THRESHOLD = 0.05
+AIM_DEADZONE_SIZE = 30
 
 def build_model():
-    net = cv2.dnn.readNet("../config_files/bestRac0305.onnx")
+    net = cv2.dnn.readNet("../config_files/yolov5s.onnx")
     net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
     net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA_FP16)
     return net
 
 def load_classes():
     class_list = []
-    with open("../config_files/RacClasses.txt", "r") as f:
+    with open("../config_files/classes.txt", "r") as f:
         class_list = [cname.strip() for cname in f.readlines()]
     print(class_list)
     return class_list
@@ -75,14 +76,17 @@ def wrap_detection(input_image, output_data):
                 height = int(h * y_factor)
                 box = np.array([left, top, width, height])
                 boxes.append(box)
-
+    confidences = np.array(confidences)          
+    
     indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.25, 0.45)
 
     result_class_ids = []
     result_confidences = []
     result_boxes = []
-
+    
     for i in indexes:
+        i=i[0]
+        
         result_confidences.append(confidences[i])
         result_class_ids.append(class_ids[i])
         result_boxes.append(boxes[i])
@@ -111,9 +115,9 @@ print('Socket now listening')
 conn, addr = s.accept()
 
 data = b'' ### CHANGED
-payload_size = struct.calcsize("L") ### CHANGED
+payload_size = struct.calcsize("=L") ### CHANGED
 
-
+    
 
 while True:
     frame_count += 1
@@ -124,23 +128,22 @@ while True:
 
     packed_msg_size = data[:payload_size]
     data = data[payload_size:]
-    msg_size = struct.unpack("L", packed_msg_size)[0] ### CHANGED
-
+    msg_size = struct.unpack("=L", packed_msg_size)[0] ### CHANGED
     # Retrieve all data based on message size
+    
     while len(data) < msg_size:
         data += conn.recv(4096)
 
 
     frame_data = data[:msg_size]
     data = data[msg_size:]
-
+    
     # Extract frame
     frame = pickle.loads(frame_data)
-
+    frame = cv2.imdecode(frame, 1)
+    #print(frame)
     # Display
 
-    response = "response"
-    conn.sendall(response.encode())
 
     #FPS
     if frame_count >= 30:
@@ -166,6 +169,33 @@ while True:
         cv2.rectangle(frame, box, color, 2)
         cv2.rectangle(frame, (box[0], box[1] - 20), (box[0] + box[2], box[1]), color, -1)
         cv2.putText(frame, class_list[classid], (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0))
+        
+        if class_list[classid]=='person':
+            frame_height = frame.shape[0]
+            frame_width = frame.shape[1]
+            center = [int(box[0]+box[2]/2),int(box[1]+box[3]/2)]
+            if center[0] < frame_width/2 - AIM_DEADZONE_SIZE:
+            	aim_x = "LEFT"
+            elif center[0] > frame_width/2 + AIM_DEADZONE_SIZE:
+            	aim_x = "RIGHT"
+            else:
+            	aim_x = "STOP"
+            
+            if center[1] < frame_height/2 - AIM_DEADZONE_SIZE:
+            	aim_y = "UP"
+            elif center[1] > frame_height/2 + AIM_DEADZONE_SIZE:
+            	aim_y = "DOWN"
+            else:
+            	aim_y = "STOP"
+            aim = [aim_x, aim_y]
+            
+            cv2.circle(frame,center,5,(0,0,255),3)
+            response = pickle.dumps(aim)
+            if aim[0] != "STOP" or aim[1] != "STOP":
+            	conn.sendall(response)
+            
+
+    
 
     cv2.imshow('frame', frame)
     cv2.waitKey(1)
