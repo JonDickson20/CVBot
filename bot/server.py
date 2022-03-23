@@ -6,6 +6,7 @@ import RPi.GPIO as GPIO
 import sys
 import socket
 import json
+import time
 from piservo import Servo
 from time import sleep
 
@@ -13,7 +14,7 @@ from time import sleep
 #s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #s.connect(("8.8.8.8", 80))
 #local_address = s.getsockname()[0]
-HOST = '192.168.68.193'
+HOST = '192.168.68.172'
 PORT = 8000
 #PORT = int(sys.argv[1])
 
@@ -84,12 +85,26 @@ grabber_closed_degrees = 110;
 
 
 async def serve(websocket, path):
-
+    lastcommand = time.clock()
     while True:
-        try:   
+        
+        print(time.clock() - lastcommand)
+        if time.clock() - lastcommand > 1:
+            lfpwm.stop()
+            lbpwm.stop()            
+            rfpwm.stop()
+            rbpwm.stop()
+            riserupwm.stop()
+            riserdpwm.stop()
+            grabber_position = grabber_open_degrees
+            grabber.write(grabber_position)
+            
+        try:
+            print('waiting')
             data = await websocket.recv()
             #print(f"< {data}")
             command = json.loads(data)
+            lastcommand = time.clock()
             print(command)
             
             if(command['left'] is None or command['left'] == 0):
@@ -137,7 +152,7 @@ async def serve(websocket, path):
                 grabber.write(grabber_position)
         except Exception as e:
             print(str(e))
-            with open("/home/pi/Desktop/bot/log.txt", "a") as log:
+            with open("/home/pi/Desktop/CVBot/bot/log.txt", "a") as log:
                 log.write(str(e)+"\n")
             lfpwm.stop()
             lbpwm.stop()            
@@ -153,7 +168,7 @@ try:
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
 except Exception as e:
-    with open("/home/pi/Desktop/bot/log.txt", "a") as log:
+    with open("/home/pi/Desktop/CVBot/bot/log.txt", "a") as log:
         log.write(str(e)+"\n")        
     lfpwm.stop()
     lbpwm.stop()            

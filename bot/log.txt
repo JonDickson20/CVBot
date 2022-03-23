@@ -1,0 +1,32 @@
+[Errno 98] error while attempting to bind on address ('192.168.68.193', 8000): address already in use
+[Errno 98] error while attempting to bind on address ('192.168.68.193', 8000): address already in use
+WebSocket connection is closed: code = 1006 (connection closed abnormally [internal]), no reason
+[Errno 99] error while attempting to bind on address ('192.168.68.193', 8000): cannot assign requested address
+[Errno 99] error while attempting to bind on address ('192.168.68.172', 8000): cannot assign requested address
+the JSON object must be str, bytes or bytearray, not generator
+the JSON object must be str, bytes or bytearray, not generator
+the JSON object must be str, bytes or bytearray, not generator
+the JSON object must be str, bytes or bytearray, not generator
+the JSON object must be str, bytes or bytearray, not generator
+the JSON object must be str, bytes or bytearray, not generator
+the JSON object must be str, bytes or bytearray, not generator
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1001 (going away), no reason
+WebSocket connection is closed: code = 1006 (connection closed abnormally [internal]), no reason
