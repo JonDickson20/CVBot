@@ -9,6 +9,7 @@ import json
 import time
 from piservo import Servo
 from time import sleep
+from threading import Thread
 
 #host on current LAN address
 #s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -82,74 +83,85 @@ grabber = Servo(18)
 grabber_open_degrees = 180;
 grabber_closed_degrees = 110;
 
+KillThread = False
 
+def doCommand(command):
+    global KillThread
+    threadTimeout = 2
+    start = time.clock()
+
+    if (command['left'] is None or command['left'] == 0):
+        command['left'] = 0
+        lfpwm.stop()
+        lbpwm.stop()
+    if (command['right'] is None or command['right'] == 0):
+        command['right'] = 0
+        rfpwm.stop()
+        rbpwm.stop()
+
+    if (command['riser'] is None or command['riser'] == 0):
+        command['riser'] = 0
+        riserupwm.stop()
+        riserdpwm.stop()
+
+    if (command['left'] > 0):
+        lbpwm.stop()
+        sleep(0.01)
+        lfpwm.start(abs(command['left']))
+    if (command['left'] < 0):
+        lfpwm.stop()
+        sleep(0.01)
+        lbpwm.start(abs(command['left']))
+
+    if (command['right'] > 0):
+        rbpwm.stop()
+        rfpwm.start(abs(command['right']))
+    if (command['right'] < 0):
+        rfpwm.stop()
+        rbpwm.start(abs(command['right']))
+
+    if (command['riser'] > 0):
+        riserupwm.stop()
+        riserupwm.start(abs(command['riser']))
+    if (command['riser'] < 0):
+        riserdpwm.stop()
+        riserdpwm.start(abs(command['riser']))
+
+    if (command['grabber'] is None or command['grabber'] == 0):
+        grabber_position = grabber_open_degrees
+        grabber.write(grabber_position)
+    if (command['grabber'] != 0):
+        grabber_position = grabber_open_degrees - (
+                    (grabber_open_degrees - grabber_closed_degrees) * (command['grabber'] / 100))
+        grabber.write(grabber_position)
+    while (time.clock() - start) < threadTimeout:
+        #sleep(.01)
+        if KillThread:
+            print('thread killed')
+            return
+
+    #thread was not killed by a new command. Stop all motion
+    lfpwm.stop()
+    lbpwm.stop()
+    rfpwm.stop()
+    rbpwm.stop()
+    riserupwm.stop()
+    riserdpwm.stop()
+    grabber_position = grabber_open_degrees
+    grabber.write(grabber_position)
 
 async def serve(websocket, path):
-    lastcommand = time.clock()
     while True:
-        
-        print(time.clock() - lastcommand)
-        if time.clock() - lastcommand > 1:
-            lfpwm.stop()
-            lbpwm.stop()            
-            rfpwm.stop()
-            rbpwm.stop()
-            riserupwm.stop()
-            riserdpwm.stop()
-            grabber_position = grabber_open_degrees
-            grabber.write(grabber_position)
-            
         try:
             print('waiting')
             data = await websocket.recv()
             #print(f"< {data}")
             command = json.loads(data)
-            lastcommand = time.clock()
             print(command)
-            
-            if(command['left'] is None or command['left'] == 0):
-                command['left'] = 0
-                lfpwm.stop()
-                lbpwm.stop()            
-            if(command['right'] is None or command['right'] == 0):
-                command['right'] = 0
-                rfpwm.stop()
-                rbpwm.stop()
-                
-            if(command['riser'] is None or command['riser'] == 0):
-                command['riser'] = 0
-                riserupwm.stop()
-                riserdpwm.stop()
-                
-            if(command['left'] > 0):
-                lbpwm.stop()
-                sleep(0.01)
-                lfpwm.start(abs(command['left']))
-            if(command['left'] < 0):
-                lfpwm.stop()
-                sleep(0.01)
-                lbpwm.start(abs(command['left']))
-                
-            if(command['right'] > 0):
-                rbpwm.stop()
-                rfpwm.start(abs(command['right']))
-            if(command['right'] < 0):
-                rfpwm.stop()
-                rbpwm.start(abs(command['right']))
-                
-            if(command['riser'] > 0):
-                riserupwm.stop()
-                riserupwm.start(abs(command['riser']))
-            if(command['riser'] < 0):
-                riserdpwm.stop()
-                riserdpwm.start(abs(command['riser']))                        
-        
-            if(command['grabber'] is None or command['grabber'] == 0):
-                grabber_position = grabber_open_degrees
-                grabber.write(grabber_position)
-            if(command['grabber'] != 0):
-                grabber_position = grabber_open_degrees - ((grabber_open_degrees - grabber_closed_degrees)*(command['grabber']/100))
-                grabber.write(grabber_position)
+            KillThread = True
+            Thread(target=doCommand, args=(command,)).start()
+            KillThread = False
+
         except Exception as e:
             print(str(e))
             with open("/home/pi/Desktop/CVBot/bot/log.txt", "a") as log:
