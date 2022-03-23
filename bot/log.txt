@@ -30,3 +30,5 @@ WebSocket connection is closed: code = 1001 (going away), no reason
 WebSocket connection is closed: code = 1001 (going away), no reason
 WebSocket connection is closed: code = 1001 (going away), no reason
 WebSocket connection is closed: code = 1006 (connection closed abnormally [internal]), no reason
+WebSocket connection is closed: code = 1006 (connection closed abnormally [internal]), no reason
+WebSocket connection is closed: code = 1006 (connection closed abnormally [internal]), no reason

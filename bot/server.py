@@ -84,11 +84,14 @@ grabber_open_degrees = 180;
 grabber_closed_degrees = 110;
 
 KillThread = False
+threadStart = time.clock()
 
 def doCommand(command):
     global KillThread
-    threadTimeout = 2
-    start = time.clock()
+    global threadStart
+    threadStart = time.clock()
+    threadTimeout = 2 #seconds until emergency stop
+
 
     if (command['left'] is None or command['left'] == 0):
         command['left'] = 0
@@ -134,8 +137,8 @@ def doCommand(command):
         grabber_position = grabber_open_degrees - (
                     (grabber_open_degrees - grabber_closed_degrees) * (command['grabber'] / 100))
         grabber.write(grabber_position)
-    while (time.clock() - start) < threadTimeout:
-        #sleep(.01)
+    while (time.clock() - threadStart) < threadTimeout:
+        sleep(.01)
         if KillThread:
             print('thread killed')
             return
@@ -151,6 +154,7 @@ def doCommand(command):
     grabber.write(grabber_position)
 
 async def serve(websocket, path):
+    lastcommand = ''
     while True:
         try:
             print('waiting')
@@ -158,9 +162,17 @@ async def serve(websocket, path):
             #print(f"< {data}")
             command = json.loads(data)
             print(command)
-            KillThread = True
-            Thread(target=doCommand, args=(command,)).start()
-            KillThread = False
+            if lastcommand == command:
+                print("same as last time")
+                #reset the start clock so thread continues to run indefinitely
+                threadStart = time.clock()
+            else:
+                KillThread = True
+                sleep(.02)
+                KillThread = False
+                Thread(target=doCommand, args=(command,)).start()
+                lastcommand = command
+                
 
         except Exception as e:
             print(str(e))
