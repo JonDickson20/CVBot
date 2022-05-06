@@ -59,7 +59,7 @@ function removegamepad(gamepad) {
   delete controllers[gamepad.index];
 }
 
-function updateStatus() {    
+function updateStatus() {
   scangamepads();
   for (j in controllers) {
     var controller = controllers[j];
@@ -86,16 +86,16 @@ function updateStatus() {
       if (touched) {
         b.className += " touched";        
       }
-      
-      if(previousValues['btn'+i] != pct){      
-        //fire event here        
+      console.log("test")      
+      if(previousValues['btn'+i] != pct){
+        
+        //fire event here
+        
         console.log('button ' + i + ' at ' + pct);
         fire = true;       
-        previousValues['time'] = new Date();
         //socket.send('button ' + i + ' at ' + pct);        
       }
       previousValues['btn'+i] = pct;
-      
     }
 
     var axes = d.getElementsByClassName("axis");
@@ -106,22 +106,6 @@ function updateStatus() {
         pct = 0
       }      
       
-      
-      
-      if(previousValues['time'] == undefined){
-          //do nothing
-      }else{
-          now = new Date()
-          keepAliveInterval = 1000
-          
-          elapsed = now - previousValues['time']          
-          if(elapsed > keepAliveInterval) {
-            previousValues['time'] = new Date();
-            fire = true;
-          }            
-      }
-      
-      
       if(fire || previousValues['axis'+i] != pct){
         fire = false;
         previousValues['axis'+i] = pct;
@@ -129,11 +113,8 @@ function updateStatus() {
         command_obj = diffSteer(previousValues['axis2'], previousValues['axis1'], 100, -100, 1);
         command_obj.riser = -previousValues['axis3'];
         command_obj.grabber = previousValues['btn7'];
-        
-        console.log(previousValues)
         console.log(command_obj)
-                
-        command_obj = JSON.stringify(command_obj)        
+        command_obj = JSON.stringify(command_obj)
         socket.send(command_obj);
       }
 

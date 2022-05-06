@@ -6,14 +6,16 @@ import RPi.GPIO as GPIO
 import sys
 import socket
 import json
+import time
 from piservo import Servo
 from time import sleep
+from threading import Thread
 
 #host on current LAN address
 #s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #s.connect(("8.8.8.8", 80))
 #local_address = s.getsockname()[0]
-HOST = '192.168.68.193'
+HOST = '192.168.68.172'
 PORT = 8000
 #PORT = int(sys.argv[1])
 
@@ -81,63 +83,100 @@ grabber = Servo(18)
 grabber_open_degrees = 180;
 grabber_closed_degrees = 110;
 
+KillThread = False
+threadStart = time.clock()
 
+def doCommand(command):
+    global KillThread
+    global threadStart
+    threadStart = time.clock()
+    threadTimeout = 2 #seconds until emergency stop
+
+
+    if (command['left'] is None or command['left'] == 0):
+        command['left'] = 0
+        lfpwm.stop()
+        lbpwm.stop()
+    if (command['right'] is None or command['right'] == 0):
+        command['right'] = 0
+        rfpwm.stop()
+        rbpwm.stop()
+
+    if (command['riser'] is None or command['riser'] == 0):
+        command['riser'] = 0
+        riserupwm.stop()
+        riserdpwm.stop()
+
+    if (command['left'] > 0):
+        lbpwm.stop()
+        sleep(0.01)
+        lfpwm.start(abs(command['left']))
+    if (command['left'] < 0):
+        lfpwm.stop()
+        sleep(0.01)
+        lbpwm.start(abs(command['left']))
+
+    if (command['right'] > 0):
+        rbpwm.stop()
+        rfpwm.start(abs(command['right']))
+    if (command['right'] < 0):
+        rfpwm.stop()
+        rbpwm.start(abs(command['right']))
+
+    if (command['riser'] > 0):
+        riserupwm.stop()
+        riserupwm.start(abs(command['riser']))
+    if (command['riser'] < 0):
+        riserdpwm.stop()
+        riserdpwm.start(abs(command['riser']))
+
+    if (command['grabber'] is None or command['grabber'] == 0):
+        grabber_position = grabber_open_degrees
+        grabber.write(grabber_position)
+    if (command['grabber'] != 0):
+        grabber_position = grabber_open_degrees - (
+                    (grabber_open_degrees - grabber_closed_degrees) * (command['grabber'] / 100))
+        grabber.write(grabber_position)
+    while (time.clock() - threadStart) < threadTimeout:
+        sleep(.01)
+        if KillThread:
+            print('thread killed')
+            return
+
+    #thread was not killed by a new command. Stop all motion
+    lfpwm.stop()
+    lbpwm.stop()
+    rfpwm.stop()
+    rbpwm.stop()
+    riserupwm.stop()
+    riserdpwm.stop()
+    grabber_position = grabber_open_degrees
+    grabber.write(grabber_position)
 
 async def serve(websocket, path):
-
+    lastcommand = ''
     while True:
-        try:   
+        try:
+            print('waiting')
             data = await websocket.recv()
             #print(f"< {data}")
             command = json.loads(data)
             print(command)
-            
-            if(command['left'] is None or command['left'] == 0):
-                command['left'] = 0
-                lfpwm.stop()
-                lbpwm.stop()            
-            if(command['right'] is None or command['right'] == 0):
-                command['right'] = 0
-                rfpwm.stop()
-                rbpwm.stop()
+            if lastcommand == command:
+                print("same as last time")
+                #reset the start clock so thread continues to run indefinitely
+                threadStart = time.clock()
+            else:
+                KillThread = True
+                sleep(.02)
+                KillThread = False
+                Thread(target=doCommand, args=(command,)).start()
+                lastcommand = command
                 
-            if(command['riser'] is None or command['riser'] == 0):
-                command['riser'] = 0
-                riserupwm.stop()
-                riserdpwm.stop()
-                
-            if(command['left'] > 0):
-                lbpwm.stop()
-                sleep(0.01)
-                lfpwm.start(abs(command['left']))
-            if(command['left'] < 0):
-                lfpwm.stop()
-                sleep(0.01)
-                lbpwm.start(abs(command['left']))
-                
-            if(command['right'] > 0):
-                rbpwm.stop()
-                rfpwm.start(abs(command['right']))
-            if(command['right'] < 0):
-                rfpwm.stop()
-                rbpwm.start(abs(command['right']))
-                
-            if(command['riser'] > 0):
-                riserupwm.stop()
-                riserupwm.start(abs(command['riser']))
-            if(command['riser'] < 0):
-                riserdpwm.stop()
-                riserdpwm.start(abs(command['riser']))                        
-        
-            if(command['grabber'] is None or command['grabber'] == 0):
-                grabber_position = grabber_open_degrees
-                grabber.write(grabber_position)
-            if(command['grabber'] != 0):
-                grabber_position = grabber_open_degrees - ((grabber_open_degrees - grabber_closed_degrees)*(command['grabber']/100))
-                grabber.write(grabber_position)
+
         except Exception as e:
             print(str(e))
-            with open("/home/pi/Desktop/bot/log.txt", "a") as log:
+            with open("/home/pi/Desktop/CVBot/bot/log.txt", "a") as log:
                 log.write(str(e)+"\n")
             lfpwm.stop()
             lbpwm.stop()            
@@ -153,7 +192,7 @@ try:
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
 except Exception as e:
-    with open("/home/pi/Desktop/bot/log.txt", "a") as log:
+    with open("/home/pi/Desktop/CVBot/bot/log.txt", "a") as log:
         log.write(str(e)+"\n")        
     lfpwm.stop()
     lbpwm.stop()            
