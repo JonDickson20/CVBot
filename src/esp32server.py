@@ -148,41 +148,32 @@ while True:
 			print('waiting for connection')
 			conn, addr = s.accept()
 			print(addr)
-			data = b''
+			last_packet = b''
 			payload_size = struct.calcsize("P")
 			connected = True  
 			print('client connected')
 		except socket.error:  
 			sleep( 2 )  
 #	try:
+	buffer_size = 10000
+	output = False
+	data = last_packet
+	while True:
+		packet = conn.recv(buffer_size)
+		data += packet
+		if packet[0] == 255 and data != b'':
+			last_packet = packet
+			break
+
+	imgnp=np.array(bytearray(data),dtype=np.uint8)
+	frame=cv2.imdecode(imgnp,-1)
+	if isinstance(frame,type(None)):
+		print(len(data))
+		continue
+
+	#FPS
 	frame_count += 1
 	total_frames += 1
-	i = 0 #DONT
-	data = b''
-	# Retrieve message size
-	print("waiting")
-	while len(data) < payload_size:
-		i = i + 1 
-		if i > 500: 
-			connected = False
-			break
-		data += conn.recv(4096)
-	if i > 500:
-		continue
-	print("here")
-	imgnp=np.array(bytearray(data),dtype=np.uint8)
-
-#		print(len(imgnp))
-	print(imgnp)
-#	print(imgnp.shape)
-	frame=cv2.imdecode(imgnp,-1)	
-	print(frame)
-	if isinstance(frame,type(None)):
-		continue
-	cv2.imshow('frame', frame)
-	cv2.waitKey(10)
-	continue		
-	#FPS
 	if frame_count >= 30:
 		end = time.time_ns()
 		fps = 1000000000 * frame_count / (end - start)
@@ -192,6 +183,11 @@ while True:
 	if fps > 0:
 		fps_label = "FPS: %.2f" % fps
 		cv2.putText(frame, fps_label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+
+	cv2.imshow('frame', frame)
+	cv2.waitKey(1)
+	continue
 
 	inputImage = format_yolov5(frame)
 	outs = detect(inputImage, net)

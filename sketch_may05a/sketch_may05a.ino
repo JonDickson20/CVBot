@@ -1,13 +1,11 @@
 #include <WiFi.h>
 #include "esp_camera.h"
-#include <base64.h> 
 
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
 #define XCLK_GPIO_NUM      0
 #define SIOD_GPIO_NUM     26
 #define SIOC_GPIO_NUM     27
-
 #define Y9_GPIO_NUM       35
 #define Y8_GPIO_NUM       34
 #define Y7_GPIO_NUM       39
@@ -20,8 +18,8 @@
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-uint8_t cam_num;
 bool connected = false;
+WiFiClient client;
  
 const char* ssid = "Frontier2976";
 const char* password =  "0550337623";
@@ -49,12 +47,11 @@ void configCamera(){
   config.pin_sscb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 10000000;
+  config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-
-  config.frame_size = FRAMESIZE_HVGA;
-  config.jpeg_quality = 9;
-  config.fb_count = 1;
+  config.frame_size = FRAMESIZE_CIF;
+  config.jpeg_quality = 10;
+  config.fb_count = 2;
 
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
@@ -63,7 +60,7 @@ void configCamera(){
   }
 }
 
-void liveCam(uint8_t num, WiFiClient client){
+void liveCam(){
   //capture a frame
   camera_fb_t * fb = esp_camera_fb_get();    
   if (!fb) {
@@ -77,9 +74,7 @@ void liveCam(uint8_t num, WiFiClient client){
  
 void setup()
 {
- 
   Serial.begin(115200);
- 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -92,8 +87,7 @@ void setup()
 }
  
 void loop()
-{
-    WiFiClient client;     
+{     
     if(connected == false){
       if (!client.connect(host, port)) {
         Serial.println("Connection to host failed");
@@ -106,10 +100,6 @@ void loop()
     }
     
     if(connected == true){
-      liveCam(0, client);
+      liveCam();
     }
-    
-    
-    //client.stop();
- 
 }
