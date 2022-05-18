@@ -1,11 +1,11 @@
 import pickle
 import socket
 import struct
-import cv2
 import time
 import datetime
 import os
 import sys
+import cv2
 import numpy as np
 
 from time import sleep
@@ -129,7 +129,7 @@ def connect():
 	global connected
 
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.settimeout(5)
+	s.settimeout(.1)
 	s.bind((os.environ.get("HOST_ADDRESS"), int(os.environ.get("HOST_PORT"))))
 	s.listen(10)
 	print('Socket now listening')
@@ -142,7 +142,7 @@ def connect():
 			connected = True
 			print('client connected')
 		except socket.error:
-			sleep( 1 )
+			sleep( .1 )
 
 	return conn
 
@@ -183,9 +183,11 @@ def show_fps():
 
 net = build_model()
 
-conn = connect()
+
 
 while True:
+	if not connected:
+		conn = connect()
 	try:
 		frame = get_frame()
 		frame = show_fps()
