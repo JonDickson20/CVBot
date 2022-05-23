@@ -1,21 +1,40 @@
+#include <ESP32_Servo.h>
 #include "esp_camera.h"
 #include <WiFi.h>
 #include <ArduinoWebsockets.h>
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
+#include <ArduinoJson.h>
+
+
 
 const char* ssid = "Frontier2976";
 const char* password = "0550337623";
 const char* websocket_server_host = "192.168.68.125";
 const uint16_t websocket_server_port = 8089;
+const int center = 90;
+int x_angle = center;
+int y_angle = center;
 
 using namespace websockets;
 WebsocketsClient client;
+Servo x_servo;
+Servo y_servo;
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
+
+  x_servo.attach(32,500,2500);
+  y_servo.attach(33,500,2500);
+  pinMode(4, OUTPUT); //laser  
+  pinMode(2, OUTPUT); //pump  
+
+  
+  x_servo.write(x_angle);   
+  y_servo.write(y_angle);
+  delay(10);  
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -34,7 +53,7 @@ void setup() {
   config.pin_href = HREF_GPIO_NUM;
   config.pin_sscb_sda = SIOD_GPIO_NUM;
   config.pin_sscb_scl = SIOC_GPIO_NUM;
-  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_pwdn = -1;
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 10000000;
   config.pixel_format = PIXFORMAT_JPEG;
@@ -48,7 +67,6 @@ void setup() {
     config.jpeg_quality = 12;
     config.fb_count = 1;
   }
-
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -70,8 +88,32 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-  client.onMessage([](WebsocketsMessage msg){
-    Serial.println("Got Message: " + msg.data());
+
+  client.onMessage([](WebsocketsMessage msg){        
+    //MOVE ALL OF THIS TO A FUNCTION YO
+    // Serial.println("Got Message: " + msg.data());
+    // Deserialize the JSON document
+    DynamicJsonDocument command(1024);
+    deserializeJson(command, msg.data());                       
+    const int laser = command["laser"];
+    const int aim_x_degrees = command["aim_x_degrees"];
+    const int aim_y_degrees = command["aim_y_degrees"];    
+
+    if(laser == 1){digitalWrite(4, HIGH);}
+    if(laser == 0){digitalWrite(4, LOW);}
+    
+    y_angle = y_angle + aim_y_degrees;
+    if(y_angle > 180){y_angle = 180;}
+    if(y_angle <0){y_angle = 0;}
+    y_servo.write(y_angle);
+    delay(15)
+    
+    x_angle = x_angle + aim_x_degrees;    
+    if(x_angle > 180){x_angle = 180;}
+    if(x_angle <0){x_angle = 0;}
+    x_servo.write(x_angle);
+    delay(15)
+    
   });
   Serial.println("Websocket Connected!");
 }
