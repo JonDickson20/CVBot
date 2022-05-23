@@ -6,6 +6,10 @@ import numpy as np
 import time
 import datetime
 import json
+from simple_pid import PID
+
+x_pid = PID(1, 0.1, 0.05, setpoint=0)
+y_pid = PID(1, 0.1, 0.05, setpoint=0)
 
 #FPS Stuff
 start = time.time_ns()
@@ -24,6 +28,8 @@ AIM_DEADZONE_SIZE = 20
 DISABLE_LASER_AFTER_FRAMES_MISSING = 10
 X_OFFSET = 25 #USE TO GET LASER INTO CENTER OF GREEN CIRCLE
 Y_OFFSET = -75 #USE TO GET LASER INTO CENTER OF GREEN CIRCLE
+X_OFFSET = 0 #USE TO GET LASER INTO CENTER OF GREEN CIRCLE
+Y_OFFSET = 0 #USE TO GET LASER INTO CENTER OF GREEN CIRCLE
 DEGREES_PER_PIXEL = 0
 FOV = 62.2
 #CREEP MODE
@@ -31,17 +37,22 @@ FOV = 62.2
 #DELAY_BETWEEN_COMMANDS = 1
 #FAST MODE
 AIM_MAX_DEGREES = 15 #this is most degrees aim will turn in 1 command
-DELAY_BETWEEN_COMMANDS = 2000
+DELAY_BETWEEN_COMMANDS = 100
 colors = [(255, 255, 0), (0, 255, 0), (0, 255, 255), (255, 0, 0)]
 aim = dict()
-aim["aim_x"] = "STOP"
-aim['aim_y'] = "STOP"
-aim['laser'] = 0
-aim['aim_x_degrees'] = 0
-aim['aim_y_degrees'] = 0
-command = json.dumps(aim)
+
 target_left_frame = 100 #target has been missing for this many frames
-last_command = datetime.datetime.now()
+last_command_time = datetime.datetime.now()
+
+
+x_angle = 90
+y_angle = 90
+aim['laser'] = 0
+aim['aim_x_degrees'] = x_angle
+aim['aim_y_degrees'] = y_angle
+command = json.dumps(aim)
+
+last_command_sent = command
 
 show_video = True
 
@@ -157,7 +168,7 @@ def format_yolov5(frame):
 
 
 def aim_at_objects(frame):
-    global target_left_frame, aim, last_command, class_list, command
+    global target_left_frame, aim, last_command_time, class_list, command, x_angle, y_angle
 
     input_image = format_yolov5(frame)
     outs = detect(input_image, net)
@@ -205,25 +216,24 @@ def aim_at_objects(frame):
             larger = max(x_percent, y_percent)
             # print(larger)
 
-            time_diff = datetime.datetime.now() - last_command
-            if int(time_diff.total_seconds() * 1000) > DELAY_BETWEEN_COMMANDS * larger:
+            time_diff = datetime.datetime.now() - last_command_time
+            if int(time_diff.total_seconds() * 1000) > DELAY_BETWEEN_COMMANDS:
                 if aim_x != "STOP" or aim_y != "STOP" or aim['laser'] == 0:
-                    aim["aim_x"] = aim_x
-                    aim['aim_y'] = aim_y
                     aim['laser'] = 1
                     if aim_x == "RIGHT":
                         aim_x_degrees = -aim_x_degrees
                     if aim_y == "DOWN":
                         aim_y_degrees = -aim_y_degrees
-                    if aim_x == "STOP":
-                        aim_x_degrees = 0
-                    if aim_y == "STOP":
-                        aim_y_degrees = 0
-                    aim['aim_x_degrees'] = aim_x_degrees
-                    aim['aim_y_degrees'] = aim_y_degrees
+                    x_control = -x_pid(aim_x_degrees)
+                    y_control = -y_pid(aim_y_degrees)
+                    x_angle = max(min(x_angle + x_control, 180), 0)
+                    y_angle = max(min(y_angle + y_control, 180), 0)
+                    aim['aim_x_degrees'] = x_angle
+                    aim['aim_y_degrees'] = y_angle
                     # SEND COMMAND HERE
                     command = json.dumps(aim)
-                    last_command = datetime.datetime.now()
+                    #print(command)
+                    last_command_time = datetime.datetime.now()
 
             continue  # this handles multiple targets by just dealing with the first one
 
@@ -231,13 +241,12 @@ def aim_at_objects(frame):
     if target_in_frame == 0:
         target_left_frame = target_left_frame + 1
         if target_left_frame > DISABLE_LASER_AFTER_FRAMES_MISSING and aim['laser'] == 1:
-            aim["aim_x"] = "STOP"
-            aim['aim_y'] = "STOP"
             aim['laser'] = 0
-            aim['aim_x_degrees'] = 0
-            aim['aim_y_degrees'] = 0
+            aim['aim_x_degrees'] = x_angle
+            aim['aim_y_degrees'] = y_angle
             # SEND COMMAND HERE
             command = json.dumps(aim)
+            #print(command)
 
     return frame, command
 
@@ -262,6 +271,7 @@ async def handler(websocket):
             else:
                 # this message will send back to only the original sender
                 print(command)
+
                 await websocket.send(command)
 
 

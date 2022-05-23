@@ -5,7 +5,7 @@
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 #include <ArduinoJson.h>
-
+#include "OTA.h"
 
 
 const char* ssid = "Frontier2976";
@@ -21,6 +21,38 @@ WebsocketsClient client;
 Servo x_servo;
 Servo y_servo;
 
+bool WebSocketConnected = false;
+
+void onEventsCallback(WebsocketsEvent event, String data) {
+    if(event == WebsocketsEvent::ConnectionOpened) {
+        WebSocketConnected = true;
+        Serial.println("Connnection Opened");
+    } else if(event == WebsocketsEvent::ConnectionClosed) {
+        WebSocketConnected = false;
+        digitalWrite(4, LOW);
+        Serial.println("Connnection Closed");
+    } else if(event == WebsocketsEvent::GotPing) {
+        Serial.println("Got a Ping!");
+    } else if(event == WebsocketsEvent::GotPong) {
+        Serial.println("Got a Pong!");
+    }
+}
+
+void onMessageCallback(WebsocketsMessage message) {
+    // Serial.println("Got Message: " + msg.data());
+    // Deserialize the JSON document
+    DynamicJsonDocument command(1024);
+    deserializeJson(command, message.data());                       
+    const int laser = command["laser"];
+    const int aim_x_degrees = command["aim_x_degrees"];
+    const int aim_y_degrees = command["aim_y_degrees"];    
+
+    if(laser == 1){digitalWrite(4, HIGH);}
+    if(laser == 0){digitalWrite(4, LOW);}
+    x_servo.write(aim_x_degrees);    
+    y_servo.write(aim_y_degrees);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
@@ -30,7 +62,6 @@ void setup() {
   y_servo.attach(33,500,2500);
   pinMode(4, OUTPUT); //laser  
   pinMode(2, OUTPUT); //pump  
-
   
   x_servo.write(x_angle);   
   y_servo.write(y_angle);
@@ -83,42 +114,21 @@ void setup() {
   }
   Serial.println("");
   Serial.println("WiFi connected");
-
-  while(!client.connect(websocket_server_host, websocket_server_port, "/")){
-    delay(500);
-    Serial.print(".");
-  }
-
-  client.onMessage([](WebsocketsMessage msg){        
-    //MOVE ALL OF THIS TO A FUNCTION YO
-    // Serial.println("Got Message: " + msg.data());
-    // Deserialize the JSON document
-    DynamicJsonDocument command(1024);
-    deserializeJson(command, msg.data());                       
-    const int laser = command["laser"];
-    const int aim_x_degrees = command["aim_x_degrees"];
-    const int aim_y_degrees = command["aim_y_degrees"];    
-
-    if(laser == 1){digitalWrite(4, HIGH);}
-    if(laser == 0){digitalWrite(4, LOW);}
-    
-    y_angle = y_angle + aim_y_degrees;
-    if(y_angle > 180){y_angle = 180;}
-    if(y_angle <0){y_angle = 0;}
-    y_servo.write(y_angle);
-    delay(15)
-    
-    x_angle = x_angle + aim_x_degrees;    
-    if(x_angle > 180){x_angle = 180;}
-    if(x_angle <0){x_angle = 0;}
-    x_servo.write(x_angle);
-    delay(15)
-    
-  });
-  Serial.println("Websocket Connected!");
+  
+  setupOTA();
+  
+  client.onEvent(onEventsCallback);
+  client.onMessage(onMessageCallback);     
 }
 
 void loop() {
+  if(!WebSocketConnected){
+    while(!client.connect(websocket_server_host, websocket_server_port, "/")){
+      delay(500);
+      Serial.print(".");
+    }
+    WebSocketConnected = true;
+  }
   camera_fb_t *fb = esp_camera_fb_get();
   if(!fb){
     Serial.println("Camera capture failed");
@@ -134,4 +144,5 @@ void loop() {
   client.sendBinary((const char*) fb->buf, fb->len);
   client.poll();
   esp_camera_fb_return(fb);
+  OTAserver.handleClient();  
 }
